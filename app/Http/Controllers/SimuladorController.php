@@ -14,6 +14,8 @@ class SimuladorController extends Controller
         $this->carregarArquivoDadosSimulador()
              ->simularEmprestimo($request->valor_emprestimo)
              ->filtrarInstituicao($request->instituicoes)
+             ->filtrarConvenio($request->convenios)
+             ->filtrarParcelas($request->parcela)
         ;
         return \response()->json($this->simulacao);
     }
@@ -32,6 +34,7 @@ class SimuladorController extends Controller
                 "parcelas"        => $dados->parcelas,
                 "valor_parcela"    => $this->calcularValorDaParcela($valorEmprestimo, $dados->coeficiente),
                 "convenio"        => $dados->convenio,
+                "instituicao"   =>$dados->instituicao
             ];
         }
         return $this;
@@ -58,4 +61,49 @@ class SimuladorController extends Controller
         }
         return $this;
     }
+
+    private function filtrarConvenio(array $convenios) : self
+    {
+        if (\count($convenios))
+        {
+            foreach ($convenios as $convenio)
+            {
+                foreach ($this->simulacao as $instituicao => $detalhesInstituicao)
+                {
+                    $detalhesFiltrados = array_filter($detalhesInstituicao, function ($item) use ($convenio) {
+                        return $item['convenio'] === $convenio;
+                    });
+
+                    if (empty($detalhesFiltrados)) {
+                        unset($this->simulacao[$instituicao]);
+                    } else {
+                        $this->simulacao[$instituicao] = array_values($detalhesFiltrados);
+                    }
+                }
+            }
+        }
+        return $this;
+    }
+
+    private function filtrarParcelas(int $parcelas) : self
+    {
+        if ($parcelas === 0) {
+            return $this;
+        }
+        foreach ($this->simulacao as $instituicao => $detalhesInstituicao)
+        {
+            $detalhesFiltrados = array_filter($detalhesInstituicao, function ($item) use ($parcelas) {
+                return $item['parcelas'] === $parcelas;
+            });
+
+            if (empty($detalhesFiltrados)) {
+                unset($this->simulacao[$instituicao]);
+            } else {
+                $this->simulacao[$instituicao] = array_values($detalhesFiltrados);
+            }
+        }
+           
+        return $this;
+    }
+
 }
